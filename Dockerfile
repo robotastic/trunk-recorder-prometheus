@@ -1,10 +1,10 @@
-FROM ubuntu:22.04@sha256:2b7412e6465c3c7fc5bb21d3e6f1917c167358449fecac8176c6e496e5c1f05f as prometheus-cpp-builder
+FROM ubuntu:22.04@sha256:6042500cf4b44023ea1894effe7890666b0c5c7871ed83a97c36c76ae560bb9b as prometheus-cpp-builder
 
 RUN apt update && export DEBIAN_FRONTEND=noninteractive && \
     apt install -y curl git cmake build-essential file zlib1g-dev && rm -rf /var/lib/apt/lists/*
 
 # renovate: datasource=github-tags depName=jupp0r/prometheus-cpp
-ARG PROMETHEUS_CPP_VERSION=v1.1.0
+ARG PROMETHEUS_CPP_VERSION=v1.2.0
 
 RUN git clone https://github.com/jupp0r/prometheus-cpp -b ${PROMETHEUS_CPP_VERSION} /tmp/prometheus-cpp && \
     cd /tmp/prometheus-cpp && \
@@ -18,7 +18,7 @@ RUN git clone https://github.com/jupp0r/prometheus-cpp -b ${PROMETHEUS_CPP_VERSI
     cd - && \
     rm -rf /tmp/prometheus-cpp
 
-FROM robotastic/trunk-recorder:edge@sha256:5911bc9d338738da5aeaf8a4c4a8e6cc07a595df4a3f51db4c7c44b61e285e2a
+FROM ghcr.io/robotastic/trunk-recorder:edge@sha256:f7b8fdf856d685c357daeac12bfcbac44fc800eaea5eb071fb8c44e45b561035
 
 COPY --from=prometheus-cpp-builder /prometheus-cpp.deb /tmp/prometheus-cpp.deb
 RUN apt update && export DEBIAN_FRONTEND=noninteractive && \
