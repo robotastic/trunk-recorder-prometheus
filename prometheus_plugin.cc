@@ -40,10 +40,11 @@ class Prometheus : public Plugin_Api
   uint16_t port;
   prometheus::Exposer *exposer;
   std::shared_ptr<prometheus::Registry> registry;
-
+  prometheus::Family<prometheus::Gauge> *active_units;
   prometheus::Family<prometheus::Gauge> *active_calls;
   prometheus::Family<prometheus::Gauge> *source_digital_recorders_gauge;
   prometheus::Family<prometheus::Gauge> *source_analog_recorders_gauge;
+  prometheus::Family<prometheus::Counter> *unit_affiliation_counter;
   prometheus::Family<prometheus::Counter> *calls_counter;
   prometheus::Family<prometheus::Counter> *message_counter;
   prometheus::Family<prometheus::Counter> *spike_counter;
@@ -74,6 +75,11 @@ public:
 
     auto prefix = std::string("trunk_recorder_");
 
+    this->active_units = &BuildGauge()
+                          .Name(prefix+"active_units")
+                          .Help("Number of active units")
+                          .Register(*registry);
+
     this->active_calls = &BuildGauge()
                           .Name(prefix+"active_calls")
                           .Help("Number of active calls")
@@ -92,6 +98,11 @@ public:
     this->calls_counter = &BuildCounter()
                           .Name(prefix+"calls")
                           .Help("Call history")
+                          .Register(*registry);
+    
+    this->unit_affiliation_counter = &BuildCounter()
+                          .Name(prefix+"units")
+                          .Help("Unit Affiliation history")
                           .Register(*registry);
 
     this->message_counter = &BuildCounter()
@@ -185,6 +196,34 @@ public:
       }
     }
     return ret;
+  }
+
+  int unit_registration(System *sys, long source_id) override
+  {
+    this->active_units->Add({
+      {"system", sys->get_short_name()},
+      {"source_id", std::to_string(source_id)},
+    }).Increment();
+    return 0;
+  }
+
+  int unit_deregistration(System *sys, long source_id) override
+  {
+    this->active_units->Add({
+      {"system", sys->get_short_name()},
+      {"source_id", std::to_string(source_id)},
+    }).Decrement();
+    return 0;
+  }
+
+  int unit_group_affiliation(System *sys, long source_id, long talkgroup_num) override
+  {
+    this->unit_affiliation_counter->Add({
+      {"system", sys->get_short_name()},
+      {"source_id", std::to_string(source_id)},
+      {"talkgroup", std::to_string(talkgroup_num)},
+    }).Increment();
+    return 0;
   }
 
   int system_rates(std::vector<System *> systems, float timeDiff) override
